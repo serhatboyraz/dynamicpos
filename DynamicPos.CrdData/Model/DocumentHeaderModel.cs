@@ -20,7 +20,7 @@ namespace DynamicPos.CrdData.Model
         public string CustomerTcNo { get; set; }
 
         [JsonProperty("VKN")]
-        public string CostumerVkNo { get; set; }
+        public string CustomerVkNo { get; set; }
 
         #endregion
 

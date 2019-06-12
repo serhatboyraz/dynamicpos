@@ -28,7 +28,6 @@ namespace DynamicPos.CrdData.Model
     /// </summary>
     public class TransItemModel
     {
-
         #region Properties
 
         /// <summary>
@@ -52,6 +51,11 @@ namespace DynamicPos.CrdData.Model
         /// Gönderildiği taktirde tutar dikkate alınmaz. (Length : 6)
         /// </summary>
         public string UnitPrice { get; set; }
+
+        /// <summary>
+        /// Barcode num
+        /// </summary>
+        public string EAN11;
 
         #endregion
 

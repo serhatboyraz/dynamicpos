@@ -174,7 +174,7 @@ namespace DynamicPos.Olivetti.Connector
             {
                 DocumentType = documentHeader.DocType.PadLeft(2, '0'),
                 Tckn = documentHeader.CustomerTcNo,
-                Vkn = documentHeader.CostumerVkNo,
+                Vkn = documentHeader.CustomerVkNo,
             }, ref rspMem);
 
             if (rspMem.InternalErrNum == "0")

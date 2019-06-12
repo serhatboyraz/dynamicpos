@@ -13,6 +13,8 @@ namespace DynamicPos.CrdData.Model
 
         /// <summary>
         /// Ödeme Türü Kodu
+        /// 01 : Nakit
+        /// 02 : Kredi Kartı
         /// </summary>
         public string PaymentTypeCode { get; set; }
 

@@ -55,6 +55,25 @@
         /// </summary>
         public string EcrMode { get; set; }
 
+        /// <summary>
+        /// Cihazın üreticisi
+        /// </summary>
+        public string DeviceBrand { get; set; }
+
+        /// <summary>
+        /// Cihaz modeli
+        /// </summary>
+        public string DeviceModel { get; set; }
+
+        /// <summary>
+        /// Cihaz seri numarası
+        /// </summary>
+        public string DeviceSerial { get; set; }
+
+        /// <summary>
+        /// Cihaz elektronik kayıt ünitesi seri numarası
+        /// </summary>
+        public string DeviceEcrSerial { get; set; }
         #endregion
 
     }

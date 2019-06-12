@@ -32,6 +32,7 @@ namespace DynamicPos.CrdData.Model
         public string CardNum { get; set; }
 
         public string CardType { get; set; } 
+
         public string MerchantId { get; set; }
 
         public string ProcessType { get; set; }
@@ -43,7 +44,5 @@ namespace DynamicPos.CrdData.Model
         public string TranDate { get; set; }
 
         public string TranTime { get; set; }
-
-
     }
 }

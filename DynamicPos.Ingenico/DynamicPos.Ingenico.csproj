@@ -49,7 +49,7 @@
     <Compile Include="CrdException.cs" />
     <Compile Include="CrdStatEnum.cs" />
     <Compile Include="GMPSmartDLL.cs" />
-    <Compile Include="IngenicoCrdConnector.cs" />
+    <Compile Include="IngenicoCrdHelper.cs" />
     <Compile Include="Model\BankPaymentAppInfo.cs" />
     <Compile Include="Model\ConditionTypeEnum.cs" />
     <Compile Include="Model\CrdStatEnum.cs" />
@@ -62,9 +62,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="GMP.INI">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -82,6 +79,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="GMP.XML">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="GMPSmartDLL.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
