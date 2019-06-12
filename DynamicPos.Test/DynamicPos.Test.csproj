@@ -49,5 +49,11 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DynamicPos.WebServer\DynamicPos.WebServer.csproj">
+      <Project>{7F007484-0ACA-47B0-8177-259A2494C418}</Project>
+      <Name>DynamicPos.WebServer</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -47,7 +47,7 @@ namespace DynamicPos.WebServer.Controller
             try
             {
                 ConnectionResultModel connectionResult = ServerHelper.CrdConnectorHelper.CrdConnector.IsConnected();
-                if (connectionResult.Message == "Başarılı" && connectionResult.StatusCode == HttpStatusCode.OK)
+                if (connectionResult.StatusCode == HttpStatusCode.OK)
                     Response.SetRespose(HttpStatusCode.OK, connectionResult);
                 else
                     Response.SetRespose(HttpStatusCode.BadRequest, connectionResult);
@@ -72,10 +72,8 @@ namespace DynamicPos.WebServer.Controller
             {
                 DocumentHeaderModel documentHeader = GetContextModel<DocumentHeaderModel>();
                 DocumentHeaderResultModel response = ServerHelper.CrdConnectorHelper.CrdConnector.ReceiptBegin(documentHeader);
-                if (response.ProcessMessage.Equals("Başarılı"))
-                    Response.SetRespose(HttpStatusCode.OK, response);
-                else
-                    Response.SetRespose(HttpStatusCode.BadRequest, response);
+
+                Response.SetRespose(response.StatusCode, response);
             }
             catch (Exception ex)
             {
@@ -148,37 +146,10 @@ namespace DynamicPos.WebServer.Controller
             return true;
         }
 
-        /*
-
-        [WebApiHandler(HttpVerbs.Post, "/Pos/PaymentForCard")]
-        public bool PaymentForCard()
-        {
-            try
-            {
-                PaymentForCardInfo paymentForCardInfo = GetContextModel<PaymentForCardInfo>();
-                if (paymentForCardInfo != null)
-                {
-                    PaymentForCardInfoResultModel forCardInfoResultModel =
-                        ServerHelper.CrdConnectorHelper.CrdConnector.PaymentCardInfo(paymentForCardInfo);
-                    Logger.Info(string.Format("PaymentForCard()", paymentForCardInfo));
-                    Response.SetRespose(HttpStatusCode.OK, forCardInfoResultModel);
-                }
-                else
-                {
-                    Response.SetRespose(HttpStatusCode.BadRequest);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex.Message, ex);
-                Response.SetRespose(HttpStatusCode.InternalServerError);
-            }
-
-            return true;
-        }
-
-        */
-
+        /// <summary>
+        /// Ödemeyi iptal et
+        /// </summary>
+        /// <returns></returns>
         [WebApiHandler(HttpVerbs.Post, "/Pos/CancelPayment")]
         public bool CancelPayment()
         {
@@ -248,7 +219,6 @@ namespace DynamicPos.WebServer.Controller
 
             return true;
         }
-
 
         /// <summary>
         /// Toplam Tutarı Getirir.
