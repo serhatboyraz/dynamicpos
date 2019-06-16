@@ -1,9 +1,12 @@
 ﻿using System;
-using System.Runtime.InteropServices;
+using System.Collections.Generic;
 using System.Text;
+using System.Runtime.InteropServices;
 using Newtonsoft.Json;
+using System.Threading;
+using System.Globalization;
 
-namespace DynamicPos.Ingenico
+namespace GmpSampleSim
 {
 
     public class ST_GMP_PAIR
@@ -82,30 +85,6 @@ namespace DynamicPos.Ingenico
         public byte[] referenceCodeOfTransaction;	    /**< tag 75 ascii */
     };
 
-    public class ST_PAYMENT_RESPONSE
-    {
-        public byte flags;
-        public UInt32 dateOfPayment;
-        public UInt32 typeOfPayment;				// EPaymentTypes
-        public byte subtypeOfPayment;			    // EPaymentSubtypes
-        public UInt32 orgAmount;					// Exp; Currency Amount
-        public UInt16 orgAmountCurrencyCode;		// as defined in currecyTable from GIB
-        public UInt32 payAmount;					// always TL with precision 2
-        public UInt16 payAmountCurrencyCode;		// always TL
-        public UInt32 cashBackAmountInTL;			// Para üstü, her zaman TL with precision 2
-        public UInt32 cashBackAmountInDoviz;		// Para Üstü, döviz satış ise döviz karşılığı
-        public string paymentName;			        // Payment name written on the ticket */
-        public string paymentInfo;			        // Payment sub message acording to the payment type */
-        public ST_BANK_PAYMENT_INFO stBankPayment;	// Keeps all payment info related with bank
-
-        public ST_PAYMENT_RESPONSE()
-        {
-            paymentName = "";
-            paymentInfo = "";
-            stBankPayment = new ST_BANK_PAYMENT_INFO();
-        }
-    }
-
     public class ST_PAYMENT_REQUEST
     {
         public UInt32 typeOfPayment;
@@ -116,7 +95,6 @@ namespace DynamicPos.Ingenico
         public UInt16 bankBkmId;
         public UInt16 numberOfinstallments;
         public byte[] terminalId;
-        public string BankPaymentUniqueId;
 
         public _ST_PAYMENT_REQUEST_ORGINAL_DATA OrgTransData;
 
@@ -127,19 +105,16 @@ namespace DynamicPos.Ingenico
         public string paymentName;
         public string paymentInfo;
 
-        public UInt32 transactionFlag;
-        public UInt32 flags;
-
-        public string LoyaltyCustomerId;
-        public string PaymentProvisionId;
-        public UInt16 LoyaltyServiceId;
+        public ST_CARD_INFO stCard;
+        public UInt32 transactionFlag;				/**< External Device Transaction Flags - 1 */
+        public UInt32 flags;							/**< Payment request process flags */
 
         public ST_PAYMENT_REQUEST()
         {
             terminalId = new byte[8];
             rawDataLen = 0;
             rawData = new byte[512];
-            BankPaymentUniqueId = "";
+            stCard = new ST_CARD_INFO();
             OrgTransData = new _ST_PAYMENT_REQUEST_ORGINAL_DATA();
         }
     };
@@ -250,15 +225,11 @@ namespace DynamicPos.Ingenico
         public UInt16 payAmountCurrencyCode;		// always TL
         public UInt32 cashBackAmountInTL;			// Para üstü, her zaman TL with precision 2
         public UInt32 cashBackAmountInDoviz;		// Para Üstü, döviz satış ise döviz karşılığı
-        public string paymentName;			        // Payment name written on the ticket */
-        public string paymentInfo;			        // Payment sub message acording to the payment type */
         public ST_BANK_PAYMENT_INFO stBankPayment;	// Keeps all payment info related with bank
 
 
         public ST_PAYMENT()
         {
-            paymentName = "";
-            paymentInfo = "";
             stBankPayment = new ST_BANK_PAYMENT_INFO();
         }
     };
@@ -371,8 +342,6 @@ namespace DynamicPos.Ingenico
         public int invoiceReceipts; 							/**< int 999999  , Total number of Invoice Ticket counts */
         public int matrahsizReceipts; 							/**< int 999999  , Total number of Matrahsiz Ticket counts */
         public int serviceModeEntry; 							/**< int 999999  , Total number of entries into Service Menu of ECR */
-        public UInt32 advanceReceipts;	 						/**< uint32 999999  , Total number of Advance transactions */
-        public UInt32 openAccountReceipts;						/**< uint32 999999  , Total number of Open Account transaction */
     };
 
     public struct Z_invoice
@@ -450,99 +419,6 @@ namespace DynamicPos.Ingenico
         }
     }
 
-    #region Aylik Rapor
-    public struct ST_KDV_Grubu
-    {
-        public string VergiToplamTutari;
-        public string VergiOrani;
-        public string VergiToplamKDV;
-    }
-
-    public struct ST_OKC_BelgeTipi
-    {
-        public string ToplamAdedi;
-        public string KDV_Toplami;
-        public string SatisTutariToplami;
-    };
-
-    public struct ST_BilgiFisi
-    {
-        public string Adedi;
-        public string ToplamTutari;
-    };
-
-    public struct ST_BilgiFisleri
-    {
-        public ST_BilgiFisi stFaturaBilgi;
-        public ST_BilgiFisi stYemekKarti;
-        public ST_BilgiFisi stAvans;
-        public ST_BilgiFisi stFaturaTahsilati;
-        public ST_BilgiFisi stCariHesap;
-        public ST_BilgiFisi stDiger;
-        public ST_BilgiFisi stGenelToplam;
-        public string OtoparkFisiAdedi;
-        public string MaliFisYemekKartiTutari;
-        public string MaliFisFaturaTahsilatTutari;
-        public string MaliFisDigerMatrahsiz;
-    };
-
-    public struct ST_Diger
-    {
-        public ST_OKC_BelgeTipi stFatura;
-        public ST_OKC_BelgeTipi stSMM;
-        public ST_OKC_BelgeTipi stGiderPusulasi;
-        public ST_OKC_BelgeTipi stMM;
-        public ST_OKC_BelgeTipi stBilet;
-    };
-
-    public struct ST_OKC_Belge
-    {
-        public ST_OKC_BelgeTipi stOKCFisi;
-        public ST_BilgiFisleri stBilgiFisleri;
-        public ST_Diger stDiger;
-    };
-
-    public struct ST_OdemeToplami
-    {
-        public string Nakit;
-        public string KrediKarti;
-        public string SanalPos;
-        public string HediyeKarti;
-        public string HavaleEFT;
-        public string E_ParaHizliPara;
-        public string SenetCek;
-        public string KrediliVadeliAcikHesap;
-        public string YemekKarti;
-        public string Diger;
-    }
-
-    public class ST_DM_REPORT
-    {
-        public int StructSize;
-        public UInt16 versiyon;
-        public string IsyeriVKN;
-        public string RaporUretilmeTarihi;
-        public string RaporUretilmeSaati;
-        public string AylikRaporNo;
-        public string GunlukRaporNo;
-        public string RaporDonemiBaslangicTarihi;
-        public string RaporDonemiBitisTarihi;
-        public string KDV_GrupAdedi;
-        public ST_KDV_Grubu[] stKDV_Grubu = new ST_KDV_Grubu[Defines.MAX_TAXRATE_COUNT];
-        public string ToplamKDV_Tutari;
-        public string ToplamSatisTutari;
-        public string BeyanEdilecekKDV_Tutari;
-        public string IndirimToplamTutari;
-        public string ArtirimToplamTutari;
-        public string KumulatifToplamKDV_Tutari;
-        public string KumulatifToplamSatisTutari;
-        public string IptalEdilenBelgeAdedi;
-        public string IptalEdilenBelgeToplamTutari;
-        public ST_OKC_Belge stOKC_Belge = new ST_OKC_Belge();
-        public ST_OdemeToplami stOdemeToplami;
-        public string EkuNo;
-    }
-    #endregion
 
     public class ST_Z_REPORT
     {
@@ -567,8 +443,6 @@ namespace DynamicPos.Ingenico
         public long OdemeTotalAmount;
         public long TaxRefundTotalAmount;
         public long MatrahsizTotalAmount;
-        public long OpenAccountTotalAmount;							/**< uint64 999999999999 , Total Amount of Open Account transaction */
-
         public Z_department[] department;
         public Z_exchange[] exchange;
         public Z_tax[] tax;
@@ -614,17 +488,13 @@ namespace DynamicPos.Ingenico
         public UInt32 KatkiPayiAmount;
         public UInt32 TaxFreeRefund;
         public UInt32 TaxFreeCalculated;
-        public string szTicketDate;
-        public string szTicketTime;
-        public UInt16 SourceVasAppID;
-        public UInt16 PaymentVasAppID;
-        public UInt16 BankVasAppID;
+        public byte[] bcdTicketDate;
+        public byte[] bcdTicketTime;
         public byte ticketType;
         public UInt16 totalNumberOfItems;
         public UInt16 numberOfItemsInThis;
         public UInt16 totalNumberOfPayments;
         public UInt16 numberOfPaymentsInThis;
-        public UInt16 numberOfLoyaltyInThis;
         public string TckNo;
         public string invoiceNo;
         public UInt32 invoiceDate;
@@ -632,31 +502,21 @@ namespace DynamicPos.Ingenico
         public int totalNumberOfPrinterLines;
         public int numberOfPrinterLinesInThis;
         public byte[] uniqueId;
-        public byte[] rawData;
-        public UInt16 rawDataLen;
-        public string LastPaymentErrorCode;        // bank error code
-        public string LastPaymentErrorMsg;         // bank error message
-        public string BankPaymentUniqueId;
         public ST_SALEINFO[] SaleInfo;
         public ST_PAYMENT[] stPayment;
         public ST_VATDetail[] stTaxDetails;
         public ST_printerDataForOneLine[] stPrinterCopy;
         public byte[] UserData;
-        public ST_LOYALTY_SERVICE_INFO[] stLoyaltyService;
 
         public ST_TICKET()
         {
             TckNo = "";
             invoiceNo = "";
-            szTicketDate = "";
-            szTicketTime = "";
             uniqueId = new byte[24];
-            rawData = new byte[512];
             SaleInfo = new ST_SALEINFO[512];
             stPayment = new ST_PAYMENT[24];
             stTaxDetails = new ST_VATDetail[8];
             stPrinterCopy = new ST_printerDataForOneLine[1024];
-            stLoyaltyService = new ST_LOYALTY_SERVICE_INFO[Defines.MAX_LOYALITY_TRANS_NUMBER];
         }
     };
 
@@ -682,7 +542,6 @@ namespace DynamicPos.Ingenico
         public byte[] Date;
         //public UInt32 date;
         public promotion promotion;
-        public UInt16 OnlineInvoiceItemExceptionCode;
 
         public ST_ITEM()
         {
@@ -792,7 +651,6 @@ namespace DynamicPos.Ingenico
         FLG_XTRANS_TICKET_TOTALS_AND_PAYMENTS_PRINTED = (1 << 18),
         FLG_XTRANS_TICKET_FOOTER_BEFORE_MF_PRINTED = (1 << 19),
         FLG_XTRANS_TICKET_FOOTER_MF_PRINTED = (1 << 20),
-        FLG_XTRANS_ONLINE_INVOICE_PARAMETERS_SET = (1 << 21),
     };
 
     public enum EVasType
@@ -806,7 +664,6 @@ namespace DynamicPos.Ingenico
         TLV_OKC_ASSIST_VAS_TYPE_OTOPARK,             	// OTOPARK
         TLV_OKC_ASSIST_VAS_TYPE_YEMEKCEKI,             	// YEMEK KARTI
         TLV_OKC_ASSIST_VAS_TYPE_LOYALTY,             	// SADAKAT UYGULAMASI
-        TLV_OKC_ASSIST_VAS_TYPE_PAYMENT,                // ODEME UYGULAMASI
         TLV_OKC_ASSIST_VAS_TYPE_ALL = 0x0100    // ALL
     };
 
@@ -861,7 +718,6 @@ namespace DynamicPos.Ingenico
         PAYMENT_BANKA_TRANSFERI = 0x00000800,   // xxxx   xxxx   ++++   xxxx   xxxx    ++++    ++++
         PAYMENT_CEK = 0x00001000,               // 	xxxx   xxxx   ++++   xxxx   xxxx    ++++    ++++
         PAYMENT_ACIK_HESAP = 0x00002000,        // 	xxxx   xxxx   ++++   xxxx   xxxx    ++++    ++++
-        PAYMENT_DIGER = 0x00004000,   // 	xxxx   xxxx   ++++   xxxx   xxxx    ++++    ++++
 
         //REVERSE_PAYMENT_ALL = 0xFFF00000,     //açılacak
         REVERSE_PAYMENT_CASH = 0x00100000,
@@ -870,12 +726,6 @@ namespace DynamicPos.Ingenico
         REVERSE_PAYMENT_YEMEKCEKI = 0x00800000,
         REVERSE_PAYMENT_MOBILE = 0x01000000,
         REVERSE_PAYMENT_HEDIYE_CEKI = 0x02000000,
-        REVERSE_PAYMENT_PUAN = 0x04000000,
-        REVERSE_PAYMENT_ACIK_HESAP = 0x08000000,
-        REVERSE_PAYMENT_KAPORA = 0x10000000,
-        REVERSE_PAYMENT_GIDER_PUSULASI = 0x20000000,
-        REVERSE_PAYMENT_BANKA_TRANSFERI = 0x40000000,
-
     };
 
 
@@ -1015,16 +865,6 @@ namespace DynamicPos.Ingenico
         GMP_EXT_DEVICE_FUNC_EKU_RAPOR_SUMMARY, // 0x0000001A
         GMP_EXT_DEVICE_FUNC_CHANGE_RECEIPT_HEADER, // 0x0000001B
         GMP_EXT_DEVICE_FUNC_BANKA_IPTAL, // 0x0000001C
-        GMP_EXT_DEVICE_FUNC_KASIYER_TANIMLA, // 0x0000001D		/**< used for define cashier */
-        GMP_EXT_DEVICE_FUNC_TRANS_INQUERY, // 0x0000001E		/**< used for transaction inquery */
-        GMP_EXT_DEVICE_FUNC_TRANS_STATUS, // 0x0000001F
-        GMP_EXT_DEVICE_FUNC_CREATE_UNIQUE_ID, // 0x00000020
-        GMP_EXT_DEVICE_FUNC_LOAD_BACKGROUND_TO_FRONT, // 0x00000021
-        GMP_EXT_DEVICE_FUNC_LOYALTY_IDENTIFICATION, // 0x00000022
-        GMP_EXT_DEVICE_FUNC_GET_INVOICE_INFO, // 0x00000023
-        GMP_EXT_DEVICE_FUNC_PAYMENT_VAS_IPTAL, // 0x00000024
-        GMP_EXT_DEVICE_FUNC_CHECK_PAYMENT_STATUS, // 0x00000025
-        GMP_EXT_DEVICE_FUNC_BIT_AYLIK_RAPOR_GONDER // = 0x000000026
     };
 
     public enum TTicketType
@@ -1052,7 +892,6 @@ namespace DynamicPos.Ingenico
         TTaxFree = 20,          //Fiscal Ticket
         TDailyMemory = 21,
         TKasaAvans = 22,        //Non_Fiscal Ticket
-        TCariHesap,						//Non_Fiscal Ticket
         TUniqueId = 127,
         TLAST              // Bu satir hep sonda kalmali
     };
@@ -1087,20 +926,12 @@ namespace DynamicPos.Ingenico
         public EItemUnitTypes iUnitType;
         public UInt64 u64Limit;
         public UInt64 u64Price;
-        public byte bLuchVoucher;
 
         public ST_DEPARTMENT()
         {
             szDeptName = "";
         }
     };
-
-    public class ST_GLOBAL_XML_DATA
-    {
-        public byte IsCheckStructVersion;
-        public int LogFileSize;
-        public string LogPath;
-    }
 
     public struct ST_DATE
     {
@@ -1116,26 +947,28 @@ namespace DynamicPos.Ingenico
         public byte second;		// 0-59
     };
 
-    public struct ST_FUNCTION_PARAMETERS_PASSWORD
-    {
-        public string supervisor;
-        public string cashier;
-    };
-
-    public struct ST_FUNCTION_PARAMETERS_POINT
-    {
-        public UInt32 ZNo;
-        public UInt32 FNo;
-        public ST_DATE date;
-        public ST_TIME time;
-    };
-
     public struct ST_FUNCTION_PARAMETERS
     {
+        [MarshalAs(UnmanagedType.U4)]
         public UInt32 EKUNo;
-        public ST_FUNCTION_PARAMETERS_PASSWORD Password;
-        public ST_FUNCTION_PARAMETERS_POINT start;
-        public ST_FUNCTION_PARAMETERS_POINT finish;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
+        public byte[] supervisor;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 13)]
+        public byte[] cashier;
+        //start
+        [MarshalAs(UnmanagedType.U4)]
+        public UInt32 ZNo_Start;
+        [MarshalAs(UnmanagedType.U4)]
+        public UInt32 FNo_Start;
+        public ST_DATE date_Start;
+        public ST_TIME time_Start;
+        //finish
+        [MarshalAs(UnmanagedType.U4)]
+        public UInt32 ZNo_Finish;
+        [MarshalAs(UnmanagedType.U4)]
+        public UInt32 FNo_Finish;
+        public ST_DATE date_Finish;
+        public ST_TIME time_Finish;
     };
 
     public class ST_CASHIER
@@ -1203,6 +1036,7 @@ namespace DynamicPos.Ingenico
         public string pan;
         public string holderName;
         public byte[] type;
+        public string expireDate;
 
         public ST_CARD_INFO()
         {
@@ -1210,6 +1044,7 @@ namespace DynamicPos.Ingenico
             pan = "";
             holderName = "";
             type = new byte[3];
+            expireDate = "";
         }
     };
 
@@ -1268,40 +1103,6 @@ namespace DynamicPos.Ingenico
         public UInt32 groupParentId;
     };
 
-    public class ST_LOYALTY_SERVICE_INFO
-    {
-        public byte[] name;						/**< Name of the Service */
-        public string CustomerId;				/**< Customer ID*/
-        public UInt16 ServiceId;				/**< Service ID*/
-        public UInt16 u16AppId;				    /**< VAS app ID*/
-        public UInt16 CustomerIdType;			/**< Type of entry: MOB:1, CUSTOMER ID:2, OTHER:3 */
-        public UInt32 TotalDiscountAmount;
-
-        public ST_LOYALTY_SERVICE_INFO()
-        {
-            name = new byte[24];
-            CustomerId = "";
-        }
-    };
-
-    public class ST_LOYALTY_SERVICE_REQ
-    {
-        public byte[] name;						/**< Name of the Service */
-        public string CustomerId;				/**< Customer ID*/
-        public UInt16 ServiceId;				/**< Service ID*/
-        public UInt16 u16AppId;				    /**< VAS app ID*/
-        public UInt16 CustomerIdType;			/**< Type of entry: MOB:1, CUSTOMER ID:2, OTHER:3 */
-        public UInt32 Amount;					/**< Amount*/
-        public byte[] rawData;					/**< 512 byte buffer to transmit or receive data to/from loyaltu application*/
-        public UInt16 rawDataLen;				/**< Raw data length */
-
-        public ST_LOYALTY_SERVICE_REQ()
-        {
-            name = new byte[24];
-            rawData = new byte[512];
-            CustomerId = "";
-        }
-    };
 
     public struct ST_PLU_GROUP_RECORD
     {
@@ -1327,84 +1128,6 @@ namespace DynamicPos.Ingenico
             date = new byte[3];
             tck_no = new byte[12];
             vk_no = new byte[12];
-        }
-    };
-
-    public class ST_ONLINE_INVIOCE_INFO
-    {
-        public string CustomerName;
-        public string VKN;
-        public string HomeAddress;
-        public string District;
-        public string City;
-        public string Country;
-        public string Mail;
-        public string WebSite;
-        public string Phone;
-        public string TaxOffice;
-        public string Ettn;
-        public string DespatchNo;
-        public string Identifier;
-        public string OrderNo;
-
-        public byte[] Type;
-        public byte[] OrderDate;
-        public byte[] DespatchDate;
-        public string SellerIdentifier_OnlineInvoice;
-        public string SellerIdentifier_OnlineArchive;
-        public UInt16 rawDataLen;
-        public byte[] rawData;
-
-
-        public ST_ONLINE_INVIOCE_INFO()
-        {
-            CustomerName = "";
-            VKN = "";
-            HomeAddress = "";
-            District = "";
-            City = "";
-            Country = "";
-            Mail = "";
-            WebSite = "";
-            Phone = "";
-            TaxOffice = "";
-            Ettn = "";
-            DespatchNo = "";
-            Identifier = "";
-            OrderNo = "";
-            Type = new byte[2];
-            OrderDate = new byte[7];
-            DespatchDate = new byte[7];
-            SellerIdentifier_OnlineArchive = "";
-            SellerIdentifier_OnlineInvoice = "";
-            rawDataLen = 0;
-            rawData = new byte[512];
-        }
-    };
-
-    public class ST_TAXFREE_INFO
-    {
-        public string BuyerName;
-        public string BuyerSurname;
-        public string VKN;
-        public byte[] IDDate;
-        public string City;
-        public string Country;
-        public string CountryCode;
-        public string Identifier;
-        public string Ettn;
-
-        public ST_TAXFREE_INFO()
-        {
-            BuyerName = "";
-            BuyerSurname = "";
-            VKN = "";
-            IDDate = new byte[3];
-            City = "";
-            Country = "";
-            CountryCode = "";
-            Identifier = "";
-            Ettn = "";
         }
     };
 
@@ -1469,40 +1192,72 @@ namespace DynamicPos.Ingenico
         public UInt16 Size;
     };
 
-
-    public class ST_MODULE_USAGE_INFO
-    {
-        public string szHardwareReference = "";
-        public string szHardwareSerial = "";
-        public UInt32 MapFreeArea;
-        public UInt32 MapUsedArea;
-        public UInt32 DataFreeArea;
-        public UInt32 DataUsedArea;
-    };
+    //public struct DEVICE_INFO_t
+    //{
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+    //    public byte[] SoftVersion;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+    //    public byte[] HardVersion;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+    //    public byte[] CompileDate;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+    //    public byte[] Description;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+    //    public byte[] HardwareReference;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+    //    public byte[] HardwareSerial;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 12)]
+    //    public byte[] CpuID;
+    //    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+    //    public byte[] Hash;
+    //    [MarshalAsAttribute(UnmanagedType.ByValTStr, SizeConst = 32)]
+    //    public string BootVersion;
+    //    public FISCAL_INTEGRITY_t Integrity;
+    //    public MEMORY_INFO_t Flash1;
+    //    public MEMORY_INFO_t Flash2;
+    //    public MEMORY_INFO_t Fram;
+    //    [MarshalAs(UnmanagedType.U2)]
+    //    public UInt16 CpuCRC;
+    //    [MarshalAs(UnmanagedType.U1)]
+    //    public byte Authentication;
+    //};
 
     public class DEVICE_INFO_t
     {
-        public string szSoftVersion = "";
-        public string szHardVersion = "";
-        public string szCompileDate = "";
-        public string szDescription = "";
-        public string szHardwareReference = "";
-        public string szHardwareSerial = "";
-        public string szCpuID = "";
-        public string szHash = "";
-        public string szBootVersion = "";
+        public byte[] SoftVersion;
+        public byte[] HardVersion;
+        public byte[] CompileDate;
+        public byte[] Description;
+        public byte[] HardwareReference;
+        public byte[] HardwareSerial;
+        public byte[] CpuID;
+        public byte[] Hash;
+        public string BootVersion;
         public FISCAL_INTEGRITY_t Integrity;
         public MEMORY_INFO_t Flash1;
         public MEMORY_INFO_t Flash2;
         public MEMORY_INFO_t Fram;
         public UInt16 CpuCRC;
         public byte Authentication;
+
+        public DEVICE_INFO_t()
+        {
+            SoftVersion = new byte[16];
+            HardVersion = new byte[16];
+            CompileDate = new byte[16];
+            Description = new byte[16];
+            HardwareReference = new byte[16];
+            HardwareSerial = new byte[16];
+            CpuID = new byte[12];
+            Hash = new byte[32];
+            BootVersion = "";
+        }
     };
 
     public class ST_EKU_MODULE_INFO
     {
-        public DEVICE_INFO_t Device = new DEVICE_INFO_t();
-        public EKU_INFO_t Eku = new EKU_INFO_t();
+        public DEVICE_INFO_t Device;
+        public EKU_INFO_t Eku;
     };
 
     // Init close structure
@@ -1559,71 +1314,6 @@ namespace DynamicPos.Ingenico
             Buffer = new byte[1024];
             DateTime = new byte[6];
             DateTimeDelta = new byte[6];
-        }
-    };
-
-    public class ST_TRANS_INQUIRY
-    {
-        public UInt16 BankBkmId;
-        public string szTerminalId;
-        public UInt32 Batch;
-        public UInt32 Stan;
-        public byte TransactionType;
-        public UInt16 ECROptions;
-        public UInt32 ECROptions2;
-        public UInt16 MessageResponseCode;
-        public UInt16 AuthorisedBank;
-        public string szResponseCode;
-        public string szTransactionDateTime;
-        public UInt16 TransactionInformationFlags;
-        public UInt16 ApplicationInformationFlags;
-        public string szPAN;
-        public UInt32 AuthorisedAmount;
-        public string szAuthorisationNumber;
-        public string szBankHostResponseCode;
-        public string szAdditionalResponseDescriptionForDisplay;
-        public string szBankApplicationSpecificInternalErrorDescription;
-        public UInt16 BankSpecificErrorCode;
-        public string szPOSApplicationBankVersion;
-        public string szPOSApplicationInternalVersion;
-
-        public ST_TRANS_INQUIRY()
-        {
-            szTerminalId = "";
-            szResponseCode = "";
-            szTransactionDateTime = "";
-            szPAN = "";
-            szAuthorisationNumber = "";
-            szBankHostResponseCode = "";
-            szAdditionalResponseDescriptionForDisplay = "";
-            szBankApplicationSpecificInternalErrorDescription = "";
-            szPOSApplicationBankVersion = "";
-            szPOSApplicationInternalVersion = "";
-        }
-    };
-
-    public class ST_PAYMENT_CHECK_RESPONSE
-    {
-        public string odemeOnayKod;
-        public string refundRNN;
-        public byte[] uniqueId;
-        public byte TaksitSayisi;
-        public string CardHolderName;
-        public byte ReaderTypes;
-        public byte[] CardType;
-        public UInt32 Tutar;
-        public UInt16 BankName;
-        public UInt16 BKMIdU16;
-        public UInt32 BatchNo;
-        public UInt32 STAN;
-        public string TerminalId;
-        public string MerchantId;
-        public byte ProvisionId;
-        public UInt16 BKMId;
-
-        public ST_PAYMENT_CHECK_RESPONSE()
-        {
-            CardType = new byte[3];
         }
     };
 
@@ -1827,42 +1517,17 @@ namespace DynamicPos.Ingenico
             }
             return Result;
         }
+
     }
 
     class Json_GMPSmartDLL
     {
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_CreateInterface", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_CreateInterface(ref UInt32 phInt, byte[] szID, byte IsDefault, byte[] szJsonXmlData);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetInterfaceXmlDataByID", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetInterfaceXmlDataByID(byte[] szID, byte[] szInterfaceXmlData, int JsonMaxLen);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetInterfaceXmlDataByHandle", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetInterfaceXmlDataByHandle(UInt32 hInt, byte[] szInterfaceXmlData, int JsonMaxLen);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_UpdateInterfaceXmlDataByID", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_UpdateInterfaceXmlDataByID(byte[] szID, byte[] szInterfaceXmlData);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_UpdateInterfaceXmlDataByHandle", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_UpdateInterfaceXmlDataByHandle(UInt32 hInt, byte[] szInterfaceXmlData);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetGlobalXmlData", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetGlobalXmlData(byte[] szGlobalXmlData, int JsonMaxLen);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_UpdateGlobalXmlData", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_UpdateGlobalXmlData(byte[] szGlobalXmlData);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetTaxRates", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_GetTaxRates(UInt32 hInt, ref int pNumberOfTotalRecords, ref int pNumberOfTotalRecordsReceived, byte[] pJsonTaxRate, byte[] szJsonTaxRate_Out, int JsonTaxRateLen_Out, int NumberOfRecordsRequested);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetDepartments", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_GetDepartments(UInt32 hInt, ref int pNumberOfTotalDepartments, ref int pNumberOfTotalDepartmentsReceived, byte[] pJsonDepartments, byte[] szJsonDepartments_Out, int JsonDepartmentsLen_Out, int NumberOfDepartmentRequested);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetTaxRates_Ex", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetTaxRates_Ex(UInt32 hInt, byte offsetOfTaxRates, ref int pNumberOfTotalRecords, ref int pNumberOfTotalRecordsReceived, byte[] pJsonTaxRate, byte[] szJsonTaxRate_Out, int JsonTaxRateLen_Out, int NumberOfRecordsRequested);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetDepartments_Ex", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetDepartments_Ex(UInt32 hInt, byte offsetOfDepartments, ref int pNumberOfTotalDepartments, ref int pNumberOfTotalDepartmentsReceived, byte[] pJsonDepartments, byte[] szJsonDepartments_Out, int JsonDepartmentsLen_Out, int NumberOfDepartmentRequested);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetExchangeTable", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_GetExchangeTable(UInt32 hInt, ref int pNumberOfTotalRecords, ref int pNumberOfTotalRecordsReceived, byte[] pJsonExchange, byte[] pJsonExchange_Out, int pJsonExchangeLen_Out, int NumberOfRecordsRequested);
@@ -1876,9 +1541,6 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_CustomerAvans", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_CustomerAvans(UInt32 hInt, UInt64 hTrx, int Amount, byte[] szJsonTicket_Out, int JsonTicketLen_Out, byte[] szCustomerName, byte[] szTckn, byte[] szVkn, int TimeoutInMiliseconds);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_CariHesap", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_CariHesap(UInt32 hInt, UInt64 hTrx, int Amount, byte[] szJsonTicket_Out, int JsonTicketLen_Out, byte[] szCustomerName, byte[] szTckn, byte[] szVkn, byte[] szBelgeNo, byte[] szBelgeDate, int TimeoutInMiliseconds);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_KasaPayment", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_KasaPayment(UInt32 hInt, UInt64 hTrx, int Amount, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int TimeoutInMiliseconds);
 
@@ -1891,9 +1553,6 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_Payment", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_Payment(UInt32 hInt, UInt64 hTrx, byte[] stPaymentRequest, byte[] Out_stPaymentRequest, int Out_stPaymentRequestLen, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int TimeoutInMiliseconds);//TIMEOUT_CARD_TRANSACTIONS
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionVasPaymentRefund", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_FunctionVasPaymentRefund(UInt32 hInt, byte[] stPaymentRequest, byte[] Out_stPaymentRequest, int Out_stPaymentRequestLen, int TimeoutInMiliseconds);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_PrintUserMessage", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_PrintUserMessage(UInt32 hInt, UInt64 hTrx, byte[] szJsonUserMessage, byte[] szJsonUserMessage_Out, int JsonUserMessageLen_Out, UInt16 NumberOfMessage, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int TimeoutInMiliseconds);
 
@@ -1902,9 +1561,6 @@ namespace DynamicPos.Ingenico
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_Plus", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_Plus(UInt32 hInt, UInt64 hTrx, int Amount, byte[] szText, byte[] szJsonTicket_Out, int JsonTicketLen_Out, UInt16 IndexOfItem, int TimeoutInMiliseconds);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_LoyaltyDiscount", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_LoyaltyDiscount(UInt32 hInt, UInt64 hTrx, byte isRate, int Amount, byte Rate, byte[] szLoyaltyCustomerId, byte[] szText, UInt16 indexOfItem, ref int pchangedAmount, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int timeoutInMiliseconds);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_Minus", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_Minus(UInt32 hInt, UInt64 hTrx, int Amount, byte[] szText, byte[] szJsonTicket_Out, int JsonTicketLen_Out, UInt16 IndexOfItem, int TimeoutInMiliseconds);
@@ -1945,17 +1601,8 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetPaymentApplicationInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_GetPaymentApplicationInfo(UInt32 hInt, ref byte pNumberOfTotalRecords, ref byte pNumberOfTotalRecordsReceived, byte[] szExchange, byte[] szExchange_Out, int ExchangeLen_Out, byte NumberOfRecordsRequested);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_SetOnlineInvoice", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_SetOnlineInvoice(UInt32 hInt, UInt64 hTrx, byte[] szJsonInvoiceInfo, byte[] szTicket_Out, int TicketLen_Out, int TimeoutInMiliseconds);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_SetTaxFreeInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_SetTaxFreeInfo(UInt32 hInt, UInt64 hTrx, byte[] szJsonTaxFreeInfo, byte[] szTicket_Out, int TicketLen_Out, int TimeoutInMiliseconds);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_SetInvoice", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_SetInvoice(UInt32 hInt, UInt64 hTrx, byte[] szJsonInvoiceInfo, byte[] szJsonInvoiceInfo_Out, int JsonInvoiceInfoLen_Out, byte[] szTicket_Out, int TicketLen_Out, int TimeoutInMiliseconds);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_SetTaxFree", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_SetTaxFree(UInt32 hInt, UInt64 hTrx, byte[] szJsonTaxFreeInfo, byte[] szTicket_Out, int TicketLen_Out, int TimeoutInMiliseconds);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_StartPairingInit", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_StartPairingInit(UInt32 hInt, byte[] szPairing, byte[] szPairingResp, int PairingRespLen);
@@ -1972,23 +1619,8 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionReadZReport", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionReadZReport(UInt32 hInt, byte[] szJsonFunctionParameters, byte[] szJsonZReport_Out, int JsonZReportLen_Out, int TimeoutInMiliseconds);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionReadDM_Report", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_FunctionReadDM_Report(UInt32 hInt, byte[] szJsonFunctionParameters, byte[] szJsonDM_Report_Out, int JsonDM_ReportLen_Out, int TimeoutInMiliseconds);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionPaymentCheck", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_FunctionPaymentCheck(UInt32 hInt, byte[] szJsonCheckResponse_In, byte[] szJsonCheckResponse_Out, int szJsonCheckResponseLen_Out, int TimeoutInMiliseconds);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_prepare_SetInvoice", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern int Json_prepare_SetInvoice(byte[] Buffer, int MaxSize, byte[] szJsonInvoiceInfo, byte[] szJsonInvoiceInfo_Out, int JsonInvoiceInfoLen_Out);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_prepare_SetOnlineInvoice", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Json_prepare_SetOnlineInvoice(byte[] Buffer, int MaxSize, byte[] szJsonInvoiceInfo);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_prepare_SetTaxFreeInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Json_prepare_SetTaxFreeInfo(byte[] Buffer, int MaxSize, byte[] szJsonTaxFreeInfo, byte[] szJsonTaxFreeInfo_Out, int JsonTaxFreeInfoLen_Out);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_prepare_SetTaxFreeInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Json_prepare_SetTaxFreeInfo(byte[] Buffer, int MaxSize, byte[] szJsonTaxFreeInfo);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_prepare_PrintUserMessage", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern int Json_prepare_PrintUserMessage(byte[] Buffer, int MaxSize, byte[] szJsonUserMessage, byte[] szJsonUserMessage_Out, int JsonUserMessageLen_Out, ushort NumberOfMessage);
@@ -2029,17 +1661,11 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_SetTaxFreeRefundAmount", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_SetTaxFreeRefundAmount(UInt32 hInt, UInt64 hTrx, int RefundAmount, ushort RefundAmountCurrency, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int TimeoutInMiliseconds);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_LoyaltyCustomerQuery", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_LoyaltyCustomerQuery(UInt32 hInt, UInt64 hTrx, byte[] szJsonLoyaltyServiceInfo, byte[] szJsonLoyaltyServiceInfo_Out, int JsonLoyaltyServiceInfoLen_Out, byte[] szJsonTicket_Out, int JsonTicketLen_Out, int TimeoutInMiliseconds);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionChangeTicketHeader", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionChangeTicketHeader(UInt32 hInt, byte[] szSupervisorPassword, ref ushort pNumberOfSpaceTotal, ref ushort pNumberOfSpaceUsed, byte[] szJsonTicketHeader, byte[] szJsonTicketHeader_Out, int JsonTicketHeaderLen_Out, int TimeoutInMiliseconds);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetTicketHeader", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_GetTicketHeader(UInt32 hInt, ushort IndexOfHeader, byte[] szJsonTicketHeader, byte[] szJsonTicketHeader_Out, int JsonTicketHeaderLen_Out, ref ushort pNumberOfSpaceTotal, int TimeoutInMiliseconds);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetOnlineInvoiceInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetOnlineInvoiceInfo(UInt32 hInt, byte[] szOnlineInvoiceId, int OnlineInvoiceIdLen, byte[] szJsonOnlineInvoiceInfo_Out, int JsonOnlineInvoiceInfoLen_Out, int TimeoutInMiliseconds);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_Database_QueryColomnCaptions", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_Database_QueryColomnCaptions(UInt32 hInt, byte[] szJsonDatabaseResult_Out, int JsonDatabaseResultLen_Out);
@@ -2059,9 +1685,6 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetVasApplicationInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_GetVasApplicationInfo(UInt32 hInt, ref byte pNumberOfTotalRecords, ref byte pNumberOfTotalRecordsReceived, byte[] szJsonPaymentApplicationInfo_Out, int JsonPaymentApplicationInfoLen_Out, UInt16 vasType);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetVasLoyaltyServiceInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_GetVasLoyaltyServiceInfo(UInt32 hInt, ref byte pNumberOfTotalRecords, ref byte pNumberOfTotalRecordsReceived, byte[] szJsonVasApplicationInfo_Out, int JsonVasApplicationInfoLen_Out, UInt16 VasAppId);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionEkuSeek", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionEkuSeek(UInt32 hInt, byte[] szJsonEKUAppInfo, byte[] szJsonEKUAppInfo_Out, int JsonEKUAppInfoLen_Out, int TimeoutInMiliseconds);
 
@@ -2077,14 +1700,8 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionEkuReadInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionEkuReadInfo(UInt32 hInt, UInt16 EkuAccessFunction, byte[] szJsonEkuModuleInfo, byte[] szJsonEkuModuleInfo_Out, int JsonEkuModuleInfoLen_Out, int TimeoutInMiliseconds);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionModuleReadInfo", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_FunctionModuleReadInfo(UInt32 hInt, int AccessFunction, byte[] szJsonModuleInfo, byte[] szJsonModuleInfo_Out, int JsonModuleInfoLen_Out, int TimeoutInMiliseconds);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionBankingRefund", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionBankingRefund(UInt32 hInt, byte[] szJsonPaymentRequest, byte[] szJsonPaymentRequest_Out, int JsonPaymentRequestLen_Out, int TimeoutInMiliseconds);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionBankingRefundExt", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_FunctionBankingRefundExt(UInt32 hInt, byte[] szJsonPaymentRequest, byte[] szJsonPaymentRequest_Out, int JsonPaymentRequestLen_Out, byte[] szJsonPaymentResponse_Out, int szJsonPaymentResponseLen, int TimeoutInMiliseconds);
 
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionBankingBatch", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionBankingBatch(UInt32 hInt, UInt16 BkmId, ref UInt16 pNumberOfBankResponse, byte[] szJsonMultipleBankResponse_Out, int JsonMultipleBankResponseLen_Out, int TimeoutInMiliseconds);
@@ -2095,98 +1712,20 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_GetIniParameters", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_GetIniParameters(byte[] szJsonIniParameter_Out, int szJsonIniParameterLen_Out);
 
+        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_CreateInterface", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 Json_FP3_CreateInterface(ref UInt32 phInt, byte[] szID, byte IsDefault, byte[] szJsonXmlData);
+
+        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_GetInterfaceXmlDataByHandle", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
+        public static extern UInt32 Json_FP3_GetInterfaceXmlDataByHandle(UInt32 hInt, byte[] pstInterfaceXmlData, Int32 JsonMaxLen);
+
         [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionGetHandleList", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 Json_FP3_FunctionGetHandleList(UInt32 hInt, byte[] szJsonHandleList_Out, int JsonHandleListLen_Out, byte StatusFilter, UInt16 StartIndexOfHandle, UInt16 HandleListSize, ref UInt16 TotalNumberOfHandlesInEcr, ref UInt16 ReceivedNumberOfHandleInList, int TimeoutInMiliseconds);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "Json_FP3_FunctionTransactionInquiry", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 Json_FP3_FunctionTransactionInquiry(UInt32 hInt, byte[] szJsonTransInquiry, byte[] szJsonTransInquiry_Out, int JsonTransInquiryLen_Out, int TimeoutInMiliseconds);
-
-        public static UInt32 FP3_CreateInterface(ref UInt32 phInt, string szID, byte IsDefault, ST_INTERFACE_XML_DATA pstXmlData)
-        {
-            string szJsonXmlData = JsonConvert.SerializeObject(pstXmlData);
-            byte[] szJsonXmlData_In = GMP_Tools.GetBytesFromString(szJsonXmlData);
-            byte[] HandleID = GMP_Tools.GetBytesFromString(szID);
-
-            return Json_FP3_CreateInterface(ref phInt, HandleID, IsDefault, szJsonXmlData_In);
-        }
-
-        public static UInt32 FP3_GetInterfaceXmlDataByID(string szID, ref ST_INTERFACE_XML_DATA pStInterfaceXmlData)
-        {
-            byte[] szJsonInterfaceXmlData_Out = new byte[Defines.STANDART_BUFFER];
-            byte[] HandleID = GMP_Tools.GetBytesFromString(szID);
-
-            UInt32 retcode = Json_FP3_GetInterfaceXmlDataByID(HandleID, szJsonInterfaceXmlData_Out, szJsonInterfaceXmlData_Out.Length);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonInterfaceXmlData_Out);
-                pStInterfaceXmlData = JsonConvert.DeserializeObject<ST_INTERFACE_XML_DATA>(retJsonString);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_GetInterfaceXmlDataByHandle(UInt32 hInt, ref ST_INTERFACE_XML_DATA stXmlData)
-        {
-            byte[] szJsonOut = new byte[Defines.STANDART_BUFFER];
-
-            UInt32 retcode = Json_FP3_GetInterfaceXmlDataByHandle(hInt, szJsonOut, szJsonOut.Length);
-
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.SetEncoding(szJsonOut);
-                stXmlData = JsonConvert.DeserializeObject<ST_INTERFACE_XML_DATA>(retJsonString);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_UpdateInterfaceXmlDataByID(string szID, ref ST_INTERFACE_XML_DATA pstInterfaceXmlData)
-        {
-            string szJsonXmlData = JsonConvert.SerializeObject(pstInterfaceXmlData);
-            byte[] szJsonXmlData_In = GMP_Tools.GetBytesFromString(szJsonXmlData);
-            byte[] HandleID = GMP_Tools.GetBytesFromString(szID);
-
-            return Json_FP3_UpdateInterfaceXmlDataByID(HandleID, szJsonXmlData_In);
-        }
-
-        public static UInt32 FP3_UpdateInterfaceXmlDataByHandle(UInt32 hInt, ref ST_INTERFACE_XML_DATA pstInterfaceXmlData)
-        {
-            string szJsonXmlData = JsonConvert.SerializeObject(pstInterfaceXmlData);
-            byte[] szJsonXmlData_In = GMP_Tools.GetBytesFromString(szJsonXmlData);
-
-            return Json_FP3_UpdateInterfaceXmlDataByHandle(hInt, szJsonXmlData_In);
-        }
-
-        public static UInt32 FP3_GetGlobalXmlData(ref ST_GLOBAL_XML_DATA StGlobalXmlData)
-        {
-            string szJsonGlobalXmlData = JsonConvert.SerializeObject(StGlobalXmlData);
-            byte[] szJsonGlobalXmlData_In = GMP_Tools.GetBytesFromString(szJsonGlobalXmlData);
-            byte[] szJsonGlobalXmlData_Out = new byte[Defines.STANDART_BUFFER];
-
-            UInt32 retcode = Json_FP3_GetGlobalXmlData(szJsonGlobalXmlData_Out, szJsonGlobalXmlData_Out.Length);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonGlobalXmlData_Out);
-                StGlobalXmlData = JsonConvert.DeserializeObject<ST_GLOBAL_XML_DATA>(retJsonString);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_UpdateGlobalXmlData(ref ST_GLOBAL_XML_DATA StGlobalXmlData)
-        {
-            string szJsonGlobalXmlData = JsonConvert.SerializeObject(StGlobalXmlData);
-            byte[] szJsonGlobalXmlData_In = GMP_Tools.GetBytesFromString(szJsonGlobalXmlData);
-
-            UInt32 retcode = Json_FP3_UpdateGlobalXmlData(szJsonGlobalXmlData_In);
-
-            return retcode;
-        }
-
         private static void MergeItemStruct(ST_TICKET StTicketDest, ST_TICKET StTicketSrc)
         {
-            StTicketDest.szTicketDate = StTicketSrc.szTicketDate;
-            StTicketDest.szTicketTime = StTicketSrc.szTicketTime;
-            StTicketDest.SourceVasAppID = StTicketSrc.SourceVasAppID;
-            StTicketDest.PaymentVasAppID = StTicketSrc.PaymentVasAppID;
-            StTicketDest.BankVasAppID = StTicketSrc.BankVasAppID;
+
+            StTicketDest.bcdTicketDate = StTicketSrc.bcdTicketDate;
+            StTicketDest.bcdTicketTime = StTicketSrc.bcdTicketTime;
             StTicketDest.CashBackAmount = StTicketSrc.CashBackAmount;
             StTicketDest.EJNo = StTicketSrc.EJNo;
             StTicketDest.FNo = StTicketSrc.FNo;
@@ -2209,7 +1748,6 @@ namespace DynamicPos.Ingenico
             StTicketDest.totalNumberOfItems = StTicketSrc.totalNumberOfItems;
             StTicketDest.totalNumberOfPayments = StTicketSrc.totalNumberOfPayments;
             StTicketDest.totalNumberOfPrinterLines = StTicketSrc.totalNumberOfPrinterLines;
-            StTicketDest.numberOfLoyaltyInThis = StTicketSrc.numberOfLoyaltyInThis;
             StTicketDest.TotalReceiptAmount = StTicketSrc.TotalReceiptAmount;
             StTicketDest.TotalReceiptDiscount = StTicketSrc.TotalReceiptDiscount;
             StTicketDest.TotalReceiptIncrement = StTicketSrc.TotalReceiptIncrement;
@@ -2221,9 +1759,7 @@ namespace DynamicPos.Ingenico
             StTicketDest.uniqueId = StTicketSrc.uniqueId;
             StTicketDest.ZNo = StTicketSrc.ZNo;
             StTicketDest.UserData = StTicketSrc.UserData;
-            StTicketDest.LastPaymentErrorCode = StTicketSrc.LastPaymentErrorCode;
-            StTicketDest.LastPaymentErrorMsg = StTicketSrc.LastPaymentErrorMsg;
-            StTicketDest.BankPaymentUniqueId = StTicketSrc.BankPaymentUniqueId;
+
 
             StTicketDest.stTaxDetails = new ST_VATDetail[StTicketSrc.stTaxDetails.Length];
             for (int i = 0; i < StTicketDest.stTaxDetails.Length; i++)
@@ -2267,40 +1803,10 @@ namespace DynamicPos.Ingenico
                     StTicketDest.stPayment[i] = StTicketSrc.stPayment[i];
             }
 
-            for (int i = 0; i < StTicketSrc.numberOfLoyaltyInThis; ++i)
-            {
-                if (StTicketSrc.stLoyaltyService != null && StTicketSrc.stLoyaltyService[i] != null)
-                    StTicketDest.stLoyaltyService[i] = StTicketSrc.stLoyaltyService[i];
-            }
-
             for (int i = 0; i < StTicketSrc.totalNumberOfPrinterLines; ++i)
             {
                 if (StTicketSrc.stPrinterCopy != null && StTicketSrc.stPrinterCopy[i] != null)
                     StTicketDest.stPrinterCopy[i] = StTicketSrc.stPrinterCopy[i];
-            }
-        }
-
-        private static void MergeTaxRateStruct(ST_TAX_RATE[] StTaxRateDest, ST_TAX_RATE[] StTaxRateSrc, int index, int size)
-        {
-            int j = 0;
-            for (int i = index; i < index + size; i++)
-            {
-                StTaxRateDest[i].taxRate = StTaxRateSrc[j++].taxRate;
-            }
-        }
-
-        private static void MergeDepartmentStruct(ST_DEPARTMENT[] StDepartmentDest, ST_DEPARTMENT[] StDepartmentSrc, int index, int size)
-        {
-            int j = 0;
-            for (int i = index; i < index + size; i++)
-            {
-                StDepartmentDest[i].iCurrencyType = StDepartmentSrc[j].iCurrencyType;
-                StDepartmentDest[i].iUnitType = StDepartmentSrc[j].iUnitType;
-                StDepartmentDest[i].szDeptName = StDepartmentSrc[j].szDeptName;
-                StDepartmentDest[i].u64Limit = StDepartmentSrc[j].u64Limit;
-                StDepartmentDest[i].u64Price = StDepartmentSrc[j].u64Price;
-                StDepartmentDest[i].u8TaxIndex = StDepartmentSrc[j].u8TaxIndex;
-                j++;
             }
         }
 
@@ -2330,42 +1836,6 @@ namespace DynamicPos.Ingenico
             {
                 string retJsonString = GMP_Tools.GetStringFromBytes(szJsonDepartments_Out);
                 pStDepartments = JsonConvert.DeserializeObject<ST_DEPARTMENT[]>(retJsonString);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_GetTaxRates_Ex(UInt32 hInt, byte indexOfTaxRates, ref int pNumberOfTotalRecords, ref int pNumberOfTotalRecordsReceived, ref ST_TAX_RATE[] pStTaxRateOrg, int NumberOfRecordsRequested)
-        {
-            ST_TAX_RATE[] pStTaxRate = new ST_TAX_RATE[NumberOfRecordsRequested];
-            string szJsonTaxRates = JsonConvert.SerializeObject(pStTaxRate);
-            byte[] szJsonTaxRates_In = GMP_Tools.GetBytesFromString(szJsonTaxRates);
-            byte[] szJsonTaxRates_Out = new byte[Defines.STANDART_BUFFER];
-
-            UInt32 retcode = Json_FP3_GetTaxRates_Ex(hInt, indexOfTaxRates, ref pNumberOfTotalRecords, ref pNumberOfTotalRecordsReceived, szJsonTaxRates_In, szJsonTaxRates_Out, szJsonTaxRates_Out.Length, NumberOfRecordsRequested);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonTaxRates_Out);
-                pStTaxRate = JsonConvert.DeserializeObject<ST_TAX_RATE[]>(retJsonString);
-
-                MergeTaxRateStruct(pStTaxRateOrg, pStTaxRate, indexOfTaxRates, pNumberOfTotalRecordsReceived);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_GetDepartments_Ex(UInt32 hInt, byte indexOfDepartments, ref int pNumberOfTotalDepartments, ref int pNumberOfTotalDepartmentsReceived, ref ST_DEPARTMENT[] pStDepartmentsOrg, int NumberOfDepartmentRequested)
-        {
-            ST_DEPARTMENT[] pStDepartments = new ST_DEPARTMENT[NumberOfDepartmentRequested];
-            string szJsonDepartments = JsonConvert.SerializeObject(pStDepartments);
-            byte[] szJsonDepartments_In = GMP_Tools.GetBytesFromString(szJsonDepartments);
-            byte[] szJsonDepartments_Out = new byte[Defines.STANDART_BUFFER];
-
-            UInt32 retcode = Json_FP3_GetDepartments_Ex(hInt, indexOfDepartments, ref pNumberOfTotalDepartments, ref pNumberOfTotalDepartmentsReceived, szJsonDepartments_In, szJsonDepartments_Out, szJsonDepartments_Out.Length, NumberOfDepartmentRequested);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonDepartments_Out);
-                pStDepartments = JsonConvert.DeserializeObject<ST_DEPARTMENT[]>(retJsonString);
-
-                MergeDepartmentStruct(pStDepartmentsOrg, pStDepartments, indexOfDepartments, pNumberOfTotalDepartmentsReceived);
             }
             return retcode;
         }
@@ -2421,27 +1891,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 Json_FP3_CariHesap(UInt32 hInt, UInt64 hTrx, int Amount, ref ST_TICKET pstTicket, string szCustomerName, string szTckn, string szVkn, string szBelgeNo, string szBelgeDate, int TimeoutInMiliseconds)
-        {
-            byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
-            byte[] CustomerName = GMP_Tools.GetBytesFromString(szCustomerName);
-            byte[] Tckn = GMP_Tools.GetBytesFromString(szTckn);
-            byte[] Vkn = GMP_Tools.GetBytesFromString(szVkn);
-            byte[] BelgeNo = GMP_Tools.GetBytesFromString(szBelgeNo);
-            //byte[] BelgeDate = GMP_Tools.GetBytesFromString(szBelgeDate);
-            byte[] BelgeDate = GMP_Tools.GetBytesFromString(szBelgeDate);
-
-            UInt32 retcode = Json_FP3_CariHesap(hInt, hTrx, Amount, szJsonTicket_Out, szJsonTicket_Out.Length, CustomerName, Tckn, Vkn, BelgeNo, BelgeDate, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonTicket_Out);
-                ST_TICKET StTicketTemp = new ST_TICKET();
-                StTicketTemp = JsonConvert.DeserializeObject<ST_TICKET>(retJsonString);
-                MergeItemStruct(pstTicket, StTicketTemp);
-            }
-            return retcode;
-        }
-
         public static UInt32 SetIniParameter(ST_INI_PARAM pStIniParameter)
         {
             string szJsonIniParameter = JsonConvert.SerializeObject(pStIniParameter);
@@ -2465,6 +1914,29 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
+        public static UInt32 FP3_CreateInterface(ref UInt32 phInt, string szID, byte IsDefault, ST_INTERFACE_XML_DATA pstXmlData)
+        {
+            string szJsonXmlData = JsonConvert.SerializeObject(pstXmlData);
+            byte[] szJsonXmlData_In = GMP_Tools.GetBytesFromString(szJsonXmlData);
+            byte[] HandleID = GMP_Tools.GetBytesFromString(szID);
+
+            return Json_FP3_CreateInterface(ref phInt, HandleID, IsDefault, szJsonXmlData_In);
+        }
+
+        public static UInt32 FP3_GetInterfaceXmlDataByHandle(UInt32 hInt, ref ST_INTERFACE_XML_DATA stXmlData)
+        {
+            byte[] szJsonOut = new byte[Defines.GMP_TICKET_BUFFER];
+
+            UInt32 retcode = Json_FP3_GetInterfaceXmlDataByHandle(hInt, szJsonOut, szJsonOut.Length);
+
+            if (retcode == 0)
+            {
+                string retJsonString = GMP_Tools.SetEncoding(szJsonOut);
+                stXmlData = JsonConvert.DeserializeObject<ST_INTERFACE_XML_DATA>(retJsonString);
+            }
+            return retcode;
+        }
+
         public static UInt32 FP3_FunctionGetHandleList(UInt32 hInt, ref ST_HANDLE_LIST[] stHandleList, byte StatusFilter, UInt16 StartIndexOfHandle, UInt16 HandleListSize, ref UInt16 TotalNumberOfHandlesInEcr, ref UInt16 ReceivedNumberOfHandleInList, int TimeoutInMiliseconds)
         {
             byte[] szJsonOut = new byte[Defines.GMP_TICKET_BUFFER];
@@ -2479,6 +1951,7 @@ namespace DynamicPos.Ingenico
 
             return retcode;
         }
+
 
         public static UInt32 FP3_KasaAvans(UInt32 hInt, UInt64 hTrx, int Amount, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
         {
@@ -2555,25 +2028,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_FunctionVasPaymentRefund(UInt32 hInt, ref ST_PAYMENT_REQUEST pStPaymentRequest, int TimeoutInMiliseconds)
-        {
-            string szJsonPaymentRequest = JsonConvert.SerializeObject(pStPaymentRequest);
-            byte[] szJsonPaymentRequest_In = GMP_Tools.GetBytesFromString(szJsonPaymentRequest);
-            byte[] szJsonPaymentRequest_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_FunctionVasPaymentRefund(hInt, szJsonPaymentRequest_In, szJsonPaymentRequest_Out, szJsonPaymentRequest_Out.Length, TimeoutInMiliseconds);
-
-            if (retcode != 0)
-            {
-                return retcode;
-            }
-
-            string retJsonString = GMP_Tools.GetStringFromBytes(szJsonPaymentRequest_Out);
-            pStPaymentRequest = JsonConvert.DeserializeObject<ST_PAYMENT_REQUEST>(retJsonString);
-
-            return retcode;
-        }
-
         public static UInt32 FP3_PrintUserMessage(UInt32 hInt, UInt64 hTrx, ref ST_USER_MESSAGE[] pStUser, UInt16 NumberOfMessage, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
         {
             byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
@@ -2627,23 +2081,6 @@ namespace DynamicPos.Ingenico
             byte[] Text = GMP_Tools.GetBytesFromString(szText);
 
             UInt32 retcode = Json_FP3_Plus(hInt, hTrx, Amount, Text, json_Out_stTicket, json_Out_stTicket.Length, IndexOfItem, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(json_Out_stTicket);
-                ST_TICKET StTicketTemp = new ST_TICKET();
-                StTicketTemp = JsonConvert.DeserializeObject<ST_TICKET>(retJsonString);
-                MergeItemStruct(pstTicket, StTicketTemp);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_LoyaltyDiscount(UInt32 hInt, UInt64 hTrx, byte isRate, int Amount, byte Rate, string szLoyaltyCustomerId, string szText, UInt16 indexOfItem, ref int pchangedAmount, ref ST_TICKET pstTicket, int timeoutInMiliseconds)
-        {
-            byte[] json_Out_stTicket = new byte[Defines.GMP_TICKET_BUFFER];
-            byte[] Text = GMP_Tools.GetBytesFromString(szText);
-            byte[] LoyaltyCustomerId = GMP_Tools.GetBytesFromString(szLoyaltyCustomerId);
-
-            UInt32 retcode = Json_FP3_LoyaltyDiscount(hInt, hTrx, isRate, Amount, Rate, LoyaltyCustomerId, Text, indexOfItem, ref pchangedAmount, json_Out_stTicket, json_Out_stTicket.Length, timeoutInMiliseconds);
             if (retcode == 0)
             {
                 string retJsonString = GMP_Tools.GetStringFromBytes(json_Out_stTicket);
@@ -2763,7 +2200,7 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static int FP3_VoidItem(UInt32 hInt, UInt64 hTrx, UInt16 Index, UInt64 ItemCount, byte ItemCountPrecision, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
+        public static UInt32 FP3_VoidItem(UInt32 hInt, UInt64 hTrx, UInt16 Index, UInt64 ItemCount, byte ItemCountPrecision, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
         {
             byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
 
@@ -2775,7 +2212,7 @@ namespace DynamicPos.Ingenico
                 StTicketTemp = JsonConvert.DeserializeObject<ST_TICKET>(retJsonString);
                 MergeItemStruct(pstTicket, StTicketTemp);
             }
-            return (int)retcode;
+            return retcode;
         }
 
         public static UInt32 FP3_FunctionGetUniqueIdList(UInt32 hInt, ref ST_UNIQUE_ID[] pStUniqueIdList, UInt16 MaxNumberOfitems, UInt16 IndexOfitemsToStart, ref UInt16 pTotalNumberOfItems, ref UInt16 pNumberOfItemsInThis, int TimeoutInMiliseconds)
@@ -2884,33 +2321,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_SetOnlineInvoice(UInt32 hInt, UInt64 hTrx, ref ST_ONLINE_INVIOCE_INFO pStOnlineInvoiceInfo, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
-        {
-            byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
-            string szJsonInvoiceInfo = JsonConvert.SerializeObject(pStOnlineInvoiceInfo);
-            byte[] szJsonInvoiceInfo_In = GMP_Tools.GetBytesFromString(szJsonInvoiceInfo);
-
-            UInt32 retcode = Json_FP3_SetOnlineInvoice(hInt, hTrx, szJsonInvoiceInfo_In, szJsonTicket_Out, szJsonTicket_Out.Length, TimeoutInMiliseconds);
-
-            string retJsonString = GMP_Tools.GetStringFromBytes(szJsonTicket_Out);
-            pstTicket = JsonConvert.DeserializeObject<ST_TICKET>(retJsonString);
-
-            return retcode;
-        }
-        public static UInt32 FP3_SetTaxFreeInfo(UInt32 hInt, UInt64 hTrx, ref ST_TAXFREE_INFO pStTaxFreeInfo, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
-        {
-            byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
-            string szJsonTaxFreeInfo = JsonConvert.SerializeObject(pStTaxFreeInfo);
-            byte[] szJsonTaxFreeInfo_In = GMP_Tools.GetBytesFromString(szJsonTaxFreeInfo);
-
-            UInt32 retcode = Json_FP3_SetTaxFreeInfo(hInt, hTrx, szJsonTaxFreeInfo_In, szJsonTicket_Out, szJsonTicket_Out.Length, TimeoutInMiliseconds);
-
-            string retJsonString = GMP_Tools.GetStringFromBytes(szJsonTicket_Out);
-            pstTicket = JsonConvert.DeserializeObject<ST_TICKET>(retJsonString);
-
-            return retcode;
-        }
-
         public static int prepare_ItemSale(byte[] Buffer, int MaxSize, ref ST_ITEM pStItem)
         {
             string szJsonItem = JsonConvert.SerializeObject(pStItem);
@@ -2970,36 +2380,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_FunctionReadDM_Report(UInt32 hInt, ref ST_FUNCTION_PARAMETERS pStFunctionParameters, ref ST_DM_REPORT pstDM_Report, int TimeoutInMiliseconds)
-        {
-            string szJsonFunctionParameters = JsonConvert.SerializeObject(pStFunctionParameters);
-            byte[] szJsonFunctionParameters_In = GMP_Tools.GetBytesFromString(szJsonFunctionParameters);
-            byte[] szJsonFunctionParameters_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_FunctionReadDM_Report(hInt, szJsonFunctionParameters_In, szJsonFunctionParameters_Out, szJsonFunctionParameters_Out.Length, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonFunctionParameters_Out);
-                pstDM_Report = JsonConvert.DeserializeObject<ST_DM_REPORT>(retJsonString);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_FunctionPaymentCheck(UInt32 hInt, char[] uniqueId, ref ST_PAYMENT_RESPONSE paymentCheckResponse, int TimeoutInMiliseconds)
-        {
-            string szJsonCheckResponse = JsonConvert.SerializeObject(paymentCheckResponse);
-            byte[] szJsonCheckResponse_In = Encoding.UTF8.GetBytes(uniqueId);
-            byte[] szJsonCheckResponse_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_FunctionPaymentCheck(hInt, szJsonCheckResponse_In, szJsonCheckResponse_Out, szJsonCheckResponse_Out.Length, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonCheckResponse_Out);
-                paymentCheckResponse = JsonConvert.DeserializeObject<ST_PAYMENT_RESPONSE>(retJsonString);
-            }
-            return retcode;
-        }
-
         public static int prepare_SetInvoice(byte[] Buffer, int MaxSize, ref ST_INVIOCE_INFO pStInvoiceInfo)
         {
             string szJsonInvoiceInfo = JsonConvert.SerializeObject(pStInvoiceInfo);
@@ -3014,24 +2394,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static int prepare_SetOnlineInvoice(byte[] Buffer, int MaxSize, ref ST_ONLINE_INVIOCE_INFO pStInvoiceInfo)
-        {
-            string szJsonInvoiceInfo = JsonConvert.SerializeObject(pStInvoiceInfo);
-            byte[] szJsonInvoiceInfo_In = GMP_Tools.GetBytesFromString(szJsonInvoiceInfo);
-
-            int retcode = Json_prepare_SetOnlineInvoice(Buffer, MaxSize, szJsonInvoiceInfo_In);
-
-            return retcode;
-        }
-        public static int prepare_SetTaxFreeInfo(byte[] Buffer, int MaxSize, ref ST_TAXFREE_INFO pStTaxFreeInfo)
-        {
-            string szJsonTaxFreeInfo = JsonConvert.SerializeObject(pStTaxFreeInfo);
-            byte[] szJsonTaxFreeInfo_In = GMP_Tools.GetBytesFromString(szJsonTaxFreeInfo);
-
-            int retcode = Json_prepare_SetTaxFreeInfo(Buffer, MaxSize, szJsonTaxFreeInfo_In);
-
-            return retcode;
-        }
         public static UInt32 parse_FiscalPrinter(ref ST_MULTIPLE_RETURN_CODE[] pStReturnCodes, ref UInt16 pNumberOfreturnCodes, UInt32 RecvMsgId, byte[] RecvFullBuffer, UInt16 RecvFullLen, ref ST_TICKET pstTicket, int MaxNumberOfReturnCode, int MaxReturnCodeDataLen)
         {
             byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
@@ -3240,26 +2602,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_LoyaltyCustomerQuery(UInt32 hInt, UInt64 hTrx, ref ST_LOYALTY_SERVICE_REQ pstLoyaltyServiceReq, ref ST_TICKET pstTicket, int TimeoutInMiliseconds)
-        {
-            byte[] szJsonTicket_Out = new byte[Defines.GMP_TICKET_BUFFER];
-            string szJsonLoyaltyServiceReq = JsonConvert.SerializeObject(pstLoyaltyServiceReq);
-            byte[] szJsonLoyaltyServiceReq_In = GMP_Tools.GetBytesFromString(szJsonLoyaltyServiceReq);
-            byte[] szJsonLoyaltyServiceReq_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_LoyaltyCustomerQuery(hInt, hTrx, szJsonLoyaltyServiceReq_In, szJsonLoyaltyServiceReq_Out, szJsonLoyaltyServiceReq_Out.Length, szJsonTicket_Out, szJsonTicket_Out.Length, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonLoyaltyServiceReq_Out);
-                pstLoyaltyServiceReq = JsonConvert.DeserializeObject<ST_LOYALTY_SERVICE_REQ>(retJsonString);
-                retJsonString = GMP_Tools.GetStringFromBytes(szJsonTicket_Out);
-                ST_TICKET StTicketTemp = new ST_TICKET();
-                StTicketTemp = JsonConvert.DeserializeObject<ST_TICKET>(retJsonString);
-                MergeItemStruct(pstTicket, StTicketTemp);
-            }
-            return retcode;
-        }
-
         public static UInt32 FP3_FunctionChangeTicketHeader(UInt32 hInt, string szSupervisorPassword, ref ushort pNumberOfSpaceTotal, ref ushort pNumberOfSpaceUsed, ref ST_TICKET_HEADER pStTicketHeader, int TimeoutInMiliseconds)
         {
             string szJsonTicketHeader = JsonConvert.SerializeObject(pStTicketHeader);
@@ -3287,19 +2629,6 @@ namespace DynamicPos.Ingenico
             {
                 string retJsonString = GMP_Tools.GetStringFromBytes(szJsonTicketHeader_Out);
                 pStTicketHeader = JsonConvert.DeserializeObject<ST_TICKET_HEADER>(retJsonString);
-            }
-            return retcode;
-        }
-
-        public static UInt32 FP3_GetOnlineInvoiceInfo(UInt32 hInt, byte[] szOnlineInvoiceInfo, int OnlineInvoiceIdLen, ref ST_ONLINE_INVIOCE_INFO pStOnlineInvoiceInfo, int TimeoutInMiliseconds)
-        {
-            byte[] szJsonOnlineInvoiceInfo_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_GetOnlineInvoiceInfo(hInt, szOnlineInvoiceInfo, OnlineInvoiceIdLen, szJsonOnlineInvoiceInfo_Out, szJsonOnlineInvoiceInfo_Out.Length, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonOnlineInvoiceInfo_Out);
-                pStOnlineInvoiceInfo = JsonConvert.DeserializeObject<ST_ONLINE_INVIOCE_INFO>(retJsonString);
             }
             return retcode;
         }
@@ -3392,20 +2721,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_GetVasLoyaltyServiceInfo(UInt32 hInt, ref byte pNumberOfTotalRecords, ref byte pNumberOfTotalRecordsReceived, ref ST_LOYALTY_SERVICE_INFO[] StLoyaltyAppInfo, UInt16 VasAppId)
-        {
-            byte[] szJsonLoyaltyPaymentAppInfo_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_GetVasLoyaltyServiceInfo(hInt, ref pNumberOfTotalRecords, ref pNumberOfTotalRecordsReceived, szJsonLoyaltyPaymentAppInfo_Out, szJsonLoyaltyPaymentAppInfo_Out.Length, VasAppId);
-
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonLoyaltyPaymentAppInfo_Out);
-                StLoyaltyAppInfo = JsonConvert.DeserializeObject<ST_LOYALTY_SERVICE_INFO[]>(retJsonString);
-            }
-            return retcode;
-        }
-
         public static UInt32 FP3_FunctionEkuSeek(UInt32 hInt, ref ST_EKU_APPINF StEKUAppInfo, int TimeoutInMiliseconds)
         {
             string szJsonEKUAppInfo = JsonConvert.SerializeObject(StEKUAppInfo);
@@ -3487,22 +2802,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_FunctionModuleReadInfo(UInt32 hInt, int AccessFunction, ref ST_MODULE_USAGE_INFO StModuleUsageInfo, int TimeoutInMiliseconds)
-        {
-            string szJsonModuleUsageInfo = JsonConvert.SerializeObject(StModuleUsageInfo);
-            byte[] szJsonModuleUsageInfo_In = GMP_Tools.GetBytesFromString(szJsonModuleUsageInfo);
-            byte[] szJsonModuleUsageInfo_Out = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_FunctionModuleReadInfo(hInt, AccessFunction, szJsonModuleUsageInfo_In, szJsonModuleUsageInfo_Out, szJsonModuleUsageInfo_Out.Length, TimeoutInMiliseconds);
-
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonModuleUsageInfo_Out);
-                StModuleUsageInfo = JsonConvert.DeserializeObject<ST_MODULE_USAGE_INFO>(retJsonString);
-            }
-            return retcode;
-        }
-
         public static UInt32 FP3_FunctionBankingRefund(UInt32 hInt, ref ST_PAYMENT_REQUEST StReversePayment, int TimeoutInMiliseconds)
         {
             string szJsonPaymentRequest = JsonConvert.SerializeObject(StReversePayment);
@@ -3518,25 +2817,6 @@ namespace DynamicPos.Ingenico
             return retcode;
         }
 
-        public static UInt32 FP3_FunctionBankingRefundExt(UInt32 hInt, ref ST_PAYMENT_REQUEST StReversePayment, ref ST_PAYMENT_RESPONSE stReverseResponse, int TimeoutInMiliseconds)
-        {
-            string szJsonPaymentRequest = JsonConvert.SerializeObject(StReversePayment);
-            byte[] szJsonPaymentRequest_In = GMP_Tools.GetBytesFromString(szJsonPaymentRequest);
-            byte[] szJsonPaymentRequest_Out = new byte[Defines.GMP_TICKET_BUFFER];
-            byte[] stJsonReverseResponse = new byte[Defines.GMP_TICKET_BUFFER];
-
-            UInt32 retcode = Json_FP3_FunctionBankingRefundExt(hInt, szJsonPaymentRequest_In, szJsonPaymentRequest_Out, szJsonPaymentRequest_Out.Length, stJsonReverseResponse, stJsonReverseResponse.Length, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonPaymentRequest_Out);
-                StReversePayment = JsonConvert.DeserializeObject<ST_PAYMENT_REQUEST>(retJsonString);
-            }
-
-            string retJsonStringResponse = GMP_Tools.GetStringFromBytes(stJsonReverseResponse);
-            stReverseResponse = JsonConvert.DeserializeObject<ST_PAYMENT_RESPONSE>(retJsonStringResponse);
-            return retcode;
-        }
-
         public static UInt32 FP3_FunctionBankingBatch(UInt32 hInt, ushort BkmId, ref ushort pNumberOfBankResponse, ref ST_MULTIPLE_BANK_RESPONSE[] StMultipleBankResponse, int TimeoutInMiliseconds)
         {
             byte[] szJsonPaymentRequestMultipleBankResponse_Out = new byte[Defines.GMP_TICKET_BUFFER];
@@ -3549,37 +2829,10 @@ namespace DynamicPos.Ingenico
             }
             return retcode;
         }
-
-        public static UInt32 FP3_FunctionTransactionInquiry(UInt32 hInt, ref ST_TRANS_INQUIRY stTransInquiry, int TimeoutInMiliseconds)
-        {
-            string szJson = JsonConvert.SerializeObject(stTransInquiry);
-            byte[] szJsonIn = GMP_Tools.GetBytesFromString(szJson);
-            byte[] szJsonOut = new byte[Defines.STANDART_BUFFER];
-
-            UInt32 retcode = Json_FP3_FunctionTransactionInquiry(hInt, szJsonIn, szJsonOut, szJsonOut.Length, TimeoutInMiliseconds);
-            if (retcode == 0)
-            {
-                string retJsonString = GMP_Tools.GetStringFromBytes(szJsonOut);
-                stTransInquiry = JsonConvert.DeserializeObject<ST_TRANS_INQUIRY>(retJsonString);
-            }
-            return retcode;
-        }
     }
 
     class GMPSmartDLL
     {
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "GenerateUniqueID", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 GenerateUniqueID(byte[] szPath);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "FP3_RemoveInterfaceByID", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 FP3_RemoveInterfaceByID(string InterfaceId);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "SetXmlFilePath", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 SetXmlFilePath(string szPath);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "GetXmlFilePath", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 GetXmlFilePath(byte[] szPath);
-
         [DllImport("GmpSmartDLL.dll", EntryPoint = "FP3_FunctionCreateUniqueId", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 FP3_FunctionCreateUniqueId(UInt32 hInt, byte[] UniqueId, int timeoutInMiliseconds);
 
@@ -3844,12 +3097,6 @@ namespace DynamicPos.Ingenico
         [DllImport("GmpSmartDLL.dll", EntryPoint = "FiscalPrinter_SendFrontStationPrint", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         public static extern UInt32 FiscalPrinter_SendFrontStationPrint(byte[] pSendBuffer, Int16 SendLen, byte[] pReceiveBuffer, ref UInt16 ReceiveLen, int timeoutInMiliseconds);
 
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "FP3_IsGmpPairingDone", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 FP3_IsGmpPairingDone(UInt32 hInt);
-
-        [DllImport("GmpSmartDLL.dll", EntryPoint = "FP3_FunctionLoadBackGroundHandleToFront", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        public static extern UInt32 FP3_FunctionLoadBackGroundHandleToFront(UInt32 hInt, UInt64 hTrx, int timeoutInMiliseconds);
-
         [DllImport("sqlite3.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "sqlite3_open")]
         public static extern int sqlite3_open(string szFilename, out IntPtr pDb);
 
@@ -3974,7 +3221,6 @@ namespace DynamicPos.Ingenico
         public const string m_amountCol = "Amount";
         public const string m_currencyCol = "Currency";
         public const string m_limitAmountCol = "Limit Amount";
-        public const string m_lunchCardCol = "Lunch Card";
 
 
         public const int TRAN_STATUS_FREE = 1;
@@ -3982,10 +3228,6 @@ namespace DynamicPos.Ingenico
         public const int TRAN_STATUS_SAVED = 3;
         public const int TRAN_STATUS_VOIDED = 4;
         public const int TRAN_STATUS_COMPLETED = 5;
-
-        public const int LOYALTY_CUSTOMER_ID_TYPE_MOBILE_TEL = 1;
-        public const int LOYALTY_CUSTOMER_ID_TYPE_MUSTERI_NO = 2;
-        public const int LOYALTY_CUSTOMER_ID_TYPE_DIGER = 3;
 
         public const int TIMEOUT_DEFAULT = 10000;	// 10 seconds
         public const int TIMEOUT_CARD_TRANSACTIONS = 100000;	// 100 seconds
@@ -4038,11 +3280,6 @@ namespace DynamicPos.Ingenico
         public const int GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_PUAN = (1 << 26);
         public const int GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT = (GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_CASH_TL | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_CASH_EXCHANGE | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_BANKCARD | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_YEMEKCEKI | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_MOBILE | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_HEDIYECEKI | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_IKRAM | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_ODEMESIZ | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_KAPORA | GMP3_OPTION_DONT_ALLOW_NEW_PAYMENT_PUAN);
 
-        public const int PAYMENT_OTHER_ALL = (int)(EPaymentTypes.PAYMENT_YEMEKCEKI | EPaymentTypes.PAYMENT_MOBILE | EPaymentTypes.PAYMENT_HEDIYE_CEKI | EPaymentTypes.PAYMENT_IKRAM | EPaymentTypes.PAYMENT_ODEMESIZ | EPaymentTypes.PAYMENT_KAPORA | EPaymentTypes.PAYMENT_GIDER_PUSULASI | EPaymentTypes.PAYMENT_PUAN | EPaymentTypes.PAYMENT_BANKA_TRANSFERI | EPaymentTypes.PAYMENT_CEK | EPaymentTypes.PAYMENT_ACIK_HESAP | EPaymentTypes.PAYMENT_DIGER);
-        public const int PAYMENT_OTHER_REVERSE = (int)(EPaymentTypes.REVERSE_PAYMENT_YEMEKCEKI | EPaymentTypes.REVERSE_PAYMENT_MOBILE | EPaymentTypes.REVERSE_PAYMENT_HEDIYE_CEKI | EPaymentTypes.REVERSE_PAYMENT_PUAN | EPaymentTypes.REVERSE_PAYMENT_ACIK_HESAP);
-        public const int PAYMENT_VAS_ALL = (int)(PAYMENT_OTHER_ALL | PAYMENT_OTHER_REVERSE);
-        public const int PAYMENT_BANK_ALL = (int)(EPaymentTypes.PAYMENT_BANK_CARD | EPaymentTypes.REVERSE_PAYMENT_BANK_CARD_VOID | EPaymentTypes.REVERSE_PAYMENT_BANK_CARD_REFUND);
-
         public const int MAX_TAXRATE_COUNT = 8;
         public const int MAX_DEPARTMENT_COUNT = 12;
         public const int MAX_EXCHANGE_COUNT = 6;
@@ -4065,14 +3302,9 @@ namespace DynamicPos.Ingenico
         public const int GMP_EXT_DEVICE_COMM_SCENARIO = 0xDFEE6C;		/**< 0XDFEE6C, Communication Scenario Gprs, Ethernet, Gprs&Ethernet */
         public const int GMP_EXT_DEVICE_STAND_BY_TIME = 0xDFEE6D;     /**< 0xDFEE6D, Set standby time value */
 
-        public const int GMP_EXT_DEVICE_FISCAL_USAGE_INFO = 0xDFEE75;     /**< 0xDFEE75 */
-        public const int GMP_EXT_DEVICE_EKU_USAGE_INFO = 0xDFEE76;		/**< 0xDFEE76 */
-
         public const byte GMP3_STATE_BIT_FLIGHT_MODE = (1 << 0); /**< State of flight mode*/
         public const byte GMP3_STATE_BIT_GPRS_CONNECTED = (1 << 1); /**<  State of GPRS connection*/
         public const byte GMP3_STATE_BIT_ETHERNET_CONNECTED = (1 << 2); /**<  State of Ethernet connection*/
-
-        public const byte MAX_LOYALITY_TRANS_NUMBER = 8;		/**< ST_TICKET MAX LOYALTY CUSTOMER COUNT */
 
         public const int GMP3_OPTION_ECHO_PRINTER = (1 << 0);
         public const int GMP3_OPTION_ECHO_PAYMENT_DETAILS = (1 << 1);
@@ -4080,7 +3312,6 @@ namespace DynamicPos.Ingenico
         public const int GMP3_OPTION_NO_RECEIPT_LIMIT_CONTROL_FOR_ITEMS = (1 << 3);
         public const int GMP3_OPTION_DONOT_CONTROL_PAYMENTS_FOR_RECEIPT_CANCEL = (1 << 4);
         public const int GMP3_OPTION_GET_CONFIRMATION_FOR_PAYMENT_CANCEL = (1 << 5);
-        public const int GMP3_OPTION_ECHO_LOYALTY_DETAILS = (1 << 6);
 
         public const int TRAN_RESULT_OK = 0x0000;
         public const int TRAN_RESULT_NOT_ALLOWED = 0x0001;
@@ -4127,9 +3358,6 @@ namespace DynamicPos.Ingenico
         public const int PS_QRCODE = 1 << 11;
         public const int PS_16 = 1 << 12;
         public const int PS_38 = 1 << 13;
-        public const int PS_MULT2 = PS_12;
-        public const int PS_MULT4 = PS_32;
-        public const int PS_MULT8 = PS_48;
         //public const int PS_ECR_TICKET_ITEM = 1 << 14;  // DONT USE
         //public const int PS_NO_BOS = 1 << 15;
         public const int PS_ECR_TICKET_ITEM = 1 << 16;

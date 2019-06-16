@@ -49,7 +49,6 @@
     <Compile Include="CrdException.cs" />
     <Compile Include="CrdStatEnum.cs" />
     <Compile Include="GMPSmartDLL.cs" />
-    <Compile Include="IngenicoCrdHelper.cs" />
     <Compile Include="Model\BankPaymentAppInfo.cs" />
     <Compile Include="Model\ConditionTypeEnum.cs" />
     <Compile Include="Model\CrdStatEnum.cs" />

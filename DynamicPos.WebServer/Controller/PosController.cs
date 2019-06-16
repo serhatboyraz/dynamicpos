@@ -47,10 +47,30 @@ namespace DynamicPos.WebServer.Controller
             try
             {
                 ConnectionResultModel connectionResult = ServerHelper.CrdConnectorHelper.CrdConnector.IsConnected();
-                if (connectionResult.StatusCode == HttpStatusCode.OK)
-                    Response.SetRespose(HttpStatusCode.OK, connectionResult);
-                else
-                    Response.SetRespose(HttpStatusCode.BadRequest, connectionResult);
+                Response.SetRespose(connectionResult.StatusCode, connectionResult);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message, ex);
+                Response.SetRespose(HttpStatusCode.InternalServerError);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Pos bağlantısı yapar.
+        /// </summary>
+        /// <returns>Bağlantı varsa true, yoksa false</returns>
+        [WebApiHandler(HttpVerbs.Post, "/Pos/HandShake")]
+        public bool HandShake()
+        {
+            try
+            {
+                HandShakeModel handShakeModel = GetContextModel<HandShakeModel>();
+                HandShakeResultModel connectionResult =
+                    ServerHelper.CrdConnectorHelper.CrdConnector.HandShake(handShakeModel);
+                Response.SetRespose(connectionResult.HttpStatusCode, connectionResult);
             }
             catch (Exception ex)
             {

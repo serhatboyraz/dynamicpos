@@ -9,6 +9,7 @@ using System.Xml;
 using DynamicPos.CrdData.Model;
 using DynamicPos.CrdService.Interface;
 using DynamicPos.Utils.Helpers;
+using GmpSampleSim;
 using UmaVendor.CRD.Model;
 using SalePaymentDataModel = DynamicPos.CrdData.Model.SalePaymentDataModel;
 
@@ -42,8 +43,59 @@ namespace DynamicPos.Ingenico.Connector
 
         public DoAllProcessResultModel DoAllProcess(DoAllProcessModel allProcessModel)
         {
+            DoAllProcessResultModel resultModel = new DoAllProcessResultModel();
 
-            return null;
+            resultModel.StatusCode = HttpStatusCode.BadRequest;
+
+            //ConnectionState İşlemi
+            ConnectionResultModel connectionResult = IsConnected();
+
+            resultModel.ConnectionResult = connectionResult;
+
+            resultModel.ProcessStep = "ConnectionResult";
+            if (connectionResult.StatusCode != HttpStatusCode.OK)
+            {
+                return resultModel;
+            }
+
+            //Fiş Başlatma işlemi
+
+            DocumentHeaderResultModel startReceiptResult = ReceiptBegin(allProcessModel.StartReceiptDataModel);
+
+            resultModel.StartReceiptResult = startReceiptResult;
+
+            resultModel.ProcessStep = "StartReceiptResult";
+            if (startReceiptResult.StatusCode != HttpStatusCode.OK)
+                return resultModel;
+
+
+            //Ürün yazdırma-satma işlemi
+
+            SaleItemResultModel saleItemResult = ItemSale(allProcessModel.SaleItemDataModel);
+
+            resultModel.SaleItemResult = saleItemResult;
+
+            resultModel.ProcessStep = "SaleItemResult";
+
+            //Ödeme işlemi
+
+            GetPaymentResultModel paymentResult = GetPayment(allProcessModel.SalePaymentDataModel);
+            resultModel.SalePaymentResult = paymentResult;
+            resultModel.ProcessStep = "SalePaymentResult";
+
+            if (paymentResult.HttpStatusCode != HttpStatusCode.OK)
+                return resultModel;
+
+            EndReceiptResultModel close = EndReceipt();
+            resultModel.EndReceiptResult = close;
+            resultModel.ProcessStep = "EndReceiptResult";
+
+            if (resultModel.EndReceiptResult.HttpStatusCode != HttpStatusCode.OK)
+                return resultModel;
+
+
+            resultModel.StatusCode = HttpStatusCode.OK;
+            return resultModel;
         }
 
         public ConnectionResultModel IsConnected()
@@ -76,7 +128,8 @@ namespace DynamicPos.Ingenico.Connector
             {
                 var resp = Json_GMPSmartDLL.FP3_StartPairingInit(SelectedInterface, ref pairing, ref pairingResp,
                     Defines.TIMEOUT_DEFAULT);
-                Connected = true;
+                Connected = resp == 0;
+
                 return new HandShakeResultModel()
                 {
                     HttpStatusCode = resp == 0 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError
@@ -138,17 +191,18 @@ namespace DynamicPos.Ingenico.Connector
             try
             {
                 ST_PAYMENT_REQUEST stPaymentRequest = new ST_PAYMENT_REQUEST();
-                stPaymentRequest.subtypeOfPayment = 0;
-                stPaymentRequest.payAmount = Extensions.ConvertToUint(double.Parse(payment.Amount));
+                stPaymentRequest.payAmount = uint.Parse(payment.Amount);
                 stPaymentRequest.payAmountCurrencyCode = (UInt16)ECurrency.CURRENCY_TL;
 
                 switch (payment.PaymentTypeCode)
                 {
                     case "01":
                         stPaymentRequest.typeOfPayment = (uint)EPaymentTypes.PAYMENT_CASH_TL;
+                        stPaymentRequest.subtypeOfPayment = 0;
                         break;
                     case "02":
                         stPaymentRequest.typeOfPayment = (uint)EPaymentTypes.PAYMENT_BANK_CARD;
+                        stPaymentRequest.subtypeOfPayment = (uint)EPaymentSubtypes.PAYMENT_SUBTYPE_PROCESS_ON_POS;
                         break;
                 }
 
@@ -184,6 +238,11 @@ namespace DynamicPos.Ingenico.Connector
 
                     if (m_stTicket.TotalReceiptPayment != 0)
                         resultMdl.Amount = Extensions.ConvertToDouble(m_stTicket.TotalReceiptPayment).ToString(CultureInfo.InvariantCulture);
+
+                    retCode = GMPSmartDLL.FP3_PrintTotalsAndPayments(SelectedInterface, ACTIVE_TRX_HANDLE,
+                        Defines.TIMEOUT_DEFAULT);
+
+                    resultMdl.HttpStatusCode = HttpStatusCode.OK;
                 }
                 else
                 {
@@ -253,7 +312,7 @@ namespace DynamicPos.Ingenico.Connector
             ushort currency = 949;
             uint retcode;
             byte unitType = 0;
-            UInt32 itemCount = uint.Parse(saleItem.Quantity);
+            UInt32 itemCount = string.IsNullOrEmpty(saleItem.Quantity) ? 1 : uint.Parse(saleItem.Quantity);
             byte itemCountPrecition = 0;
             ST_TICKET m_stTicket = new ST_TICKET();
             ST_ITEM stItem = new ST_ITEM();
@@ -349,6 +408,7 @@ namespace DynamicPos.Ingenico.Connector
                 XmlNode portNode = xmlDoc.SelectSingleNode("GMP/INTERFACE/Port");
                 if (portNode != null)
                     portNode.FirstChild.Value = handShakeModel.PosIpPort;
+                xmlDoc.Save(gmpFilePath);
             }
         }
 
@@ -500,11 +560,11 @@ namespace DynamicPos.Ingenico.Connector
         {
             ST_TICKET m_stTicket = new ST_TICKET();
 
-            uint retcode = Json_GMPSmartDLL.FP3_VoidAll(SelectedInterface, 0, ref m_stTicket, TIMEOUT_DEFAULT);
+            uint retcode = Json_GMPSmartDLL.FP3_VoidAll(SelectedInterface, ACTIVE_TRX_HANDLE, ref m_stTicket, TIMEOUT_DEFAULT);
 
             if (retcode != 0)
             {
-                throw new CrdException("itemPercentIncrease error: " + retcode);
+                throw new CrdException("itemPercentIncrease error: " + GetDefineText(retcode));
             }
         }
 
